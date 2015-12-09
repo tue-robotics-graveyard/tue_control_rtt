@@ -1,13 +1,17 @@
 #ifndef CONTROLLER_MANAGER_COMPONENT_H
 #define CONTROLLER_MANAGER_COMPONENT_H
 
+//! OROCOS
 #include <rtt/TaskContext.hpp>
 #include <rtt/OutputPort.hpp>
 
+//! ROS
 #include <diagnostic_msgs/DiagnosticArray.h>
 #include <sensor_msgs/JointState.h>
-
 #include <tue_control_rtt_msgs/ControllerManagerAction.h>
+
+//! CONTROL
+#include <tue/control/controller_manager.h>
 
 namespace tue
 {
@@ -17,6 +21,9 @@ namespace control
 
 namespace rtt
 {
+
+class DiagnosticsPublisher;
+class JointStatePublisher;
 
 class ControllerManagerComponent : public RTT::TaskContext
 {
@@ -78,14 +85,21 @@ protected:
      */
     virtual void stopHook();
 
-    //! OROCOS I/O
+    //! Controller manager
+    std::string configuration_path_;
+    ControllerManager manager;
 
-    // ROS outputs
-    RTT::OutputPort<diagnostic_msgs::DiagnosticArray> diagnostics_output_port_;
-    RTT::OutputPort<sensor_msgs::JointState> joint_states_output_port_;
+    //! OROCOS I/O
+    void addTopicPort(const std::string& name, RTT::base::PortInterface& port);
 
     // ROS inputs
     RTT::InputPort<tue_control_rtt_msgs::ControllerManagerAction> controller_manager_action_input_port_;
+
+    //! Diagnostics publisher
+    DiagnosticsPublisher* diagnostics_publisher_;
+
+    //! Joint state publisher
+    JointStatePublisher* joint_state_publisher_;
 
 };
 

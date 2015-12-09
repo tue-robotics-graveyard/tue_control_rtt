@@ -5,7 +5,10 @@
 
 #include <rtt_roscomm/rtt_rostopic.h>
 
-#include <string>
+#include <tue/config/configuration.h>
+
+#include "util/diagnostics_publisher.h"
+#include "util/joint_state_publisher.h"
 
 namespace tue
 {
@@ -19,35 +22,58 @@ namespace rtt
 // ----------------------------------------------------------------------------------------------------
 
 ControllerManagerComponent::ControllerManagerComponent(const std::string& name) :
-    RTT::TaskContext(name)
+    RTT::TaskContext(name),
+    diagnostics_publisher_(new DiagnosticsPublisher),
+    joint_state_publisher_(new JointStatePublisher)
 {
-    //! Setup diagnostics topic
-    std::string diagnostics_name = "diagnostics";
-    addPort(diagnostics_name, diagnostics_output_port_);
-    diagnostics_output_port_.createStream(rtt_roscomm::topic("~" + this->getName() + "/" + diagnostics_name));
+    addTopicPort("diagnostics", diagnostics_publisher_->getPort());
+    addTopicPort("joint_states", joint_state_publisher_->getPort());
+    addTopicPort("action", controller_manager_action_input_port_);
 
-    //! Setup joint states topic
-    std::string joint_states_name = "joint_states";
-    addPort(joint_states_name, joint_states_output_port_);
-    joint_states_output_port_.createStream(rtt_roscomm::topic("~" + this->getName() + "/" + joint_states_name));
+    addProperty("configuration_path", configuration_path_);
+}
 
-    //! Setup controller manager action input topic
-    std::string controller_manager_action_name = "action";
-    addPort(controller_manager_action_name, controller_manager_action_input_port_);
-    controller_manager_action_input_port_.createStream(rtt_roscomm::topic("~" + this->getName() + "/" + controller_manager_action_name));
+// ----------------------------------------------------------------------------------------------------
+
+void ControllerManagerComponent::addTopicPort(const std::string& name, RTT::base::PortInterface& port)
+{
+    addPort(name, port);
+    port.createStream(rtt_roscomm::topic("~" + this->getName() + "/" + name));
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 ControllerManagerComponent::~ControllerManagerComponent()
 {
-
+    delete diagnostics_publisher_;
+    delete joint_state_publisher_;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 bool ControllerManagerComponent::configureHook()
 {
+    if (configuration_path_.empty())
+    {
+        RTT::log(RTT::Error) << "ControllerManagerComponent::configureHook(): no configuration_path property specified" << RTT::endlog();
+        return false;
+    }
+
+    Configuration config;
+    config.loadFromYAMLFile(configuration_path_);
+    if (config.hasError())
+    {
+        RTT::log(RTT::Error) << "ControllerManagerComponent::configureHook(): " << config.error() << RTT::endlog();
+        return false;
+    }
+
+    manager.configure(config);
+    if (config.hasError())
+    {
+        RTT::log(RTT::Error) << "ControllerManagerComponent::configureHook(): " << config.error() << RTT::endlog();
+        return false;
+    }
+
     return true;
 }
 
@@ -55,6 +81,8 @@ bool ControllerManagerComponent::configureHook()
 
 bool ControllerManagerComponent::startHook()
 {
+    // Nothing for now :)
+
     return true;
 }
 
@@ -62,15 +90,12 @@ bool ControllerManagerComponent::startHook()
 
 void ControllerManagerComponent::updateHook()
 {
-    diagnostic_msgs::DiagnosticArray diagnostics_array;
-    diagnostics_output_port_.write(diagnostics_array);
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 void ControllerManagerComponent::stopHook()
 {
-
 }
 
 // ----------------------------------------------------------------------------------------------------

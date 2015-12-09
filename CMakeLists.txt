@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
     tue_control_rtt_msgs
 
     tue_control
+
+    tue_config
 )
 
 include_directories(
@@ -20,8 +22,16 @@ include_directories(
 
 ### Orocos Targets ###
 
+add_library(tue_control_rtt_util
+            src/util/diagnostics_publisher.cpp
+            src/util/diagnostics_publisher.h
+            src/util/joint_state_publisher.cpp
+            src/util/joint_state_publisher.h
+)
+target_link_libraries(tue_control_rtt_util ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES})
+
 orocos_component(controller_manager_component src/controller_manager_component.cpp include/tue/control/rtt/controller_manager_component.h)
-target_link_libraries(controller_manager_component ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES})
+target_link_libraries(controller_manager_component tue_control_rtt_util)
 
 ### Orocos Package Exports and Install Targets ###
 
