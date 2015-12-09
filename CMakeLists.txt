@@ -3,6 +3,7 @@ project(tue_control_rtt)
 
 find_package(catkin REQUIRED COMPONENTS
     rtt_ros
+    tue_control
 )
 
 include_directories(
