@@ -2,6 +2,12 @@
 #define CONTROLLER_MANAGER_COMPONENT_H
 
 #include <rtt/TaskContext.hpp>
+#include <rtt/OutputPort.hpp>
+
+#include <diagnostic_msgs/DiagnosticArray.h>
+#include <sensor_msgs/JointState.h>
+
+#include <tue_control_rtt_msgs/ControllerManagerAction.h>
 
 namespace tue
 {
@@ -28,6 +34,7 @@ public:
     */
     ~ControllerManagerComponent();
 
+protected:
     /**
      * Implement this method such that it contains the code which
      * will be executed when \a configure() is called. The default
@@ -70,6 +77,15 @@ public:
      * implementation is an empty function.
      */
     virtual void stopHook();
+
+    //! OROCOS I/O
+
+    // ROS outputs
+    RTT::OutputPort<diagnostic_msgs::DiagnosticArray> diagnostics_output_port_;
+    RTT::OutputPort<sensor_msgs::JointState> joint_states_output_port_;
+
+    // ROS inputs
+    RTT::InputPort<tue_control_rtt_msgs::ControllerManagerAction> controller_manager_action_input_port_;
 
 };
 

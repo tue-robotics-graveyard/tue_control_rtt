@@ -10,25 +10,38 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <!-- Build deps are queried automatically with orocos_use_package() -->
   <build_depend>rtt</build_depend>
-  <build_depend>ocl</build_depend>
-  <build_depend>rtt_ros</build_depend>
-  <build_depend>tue_control</build_depend>
-
   <run_depend>rtt</run_depend>
-  <run_depend>ocl</run_depend>
-  <run_depend>rtt_ros</run_depend>
-  <run_depend>tue_control</run_depend>
 
-  <!-- ROS Msg Typekits and Srv Proxies -->
-  <build_depend>rtt_sensor_msgs</build_depend>
-  <run_depend>rtt_sensor_msgs</run_depend>
+  <build_depend>ocl</build_depend>
+  <run_depend>ocl</run_depend>
+
+  <build_depend>orogen</build_depend>
+  <run_depend>orogen</run_depend>
+
+  <build_depend>rtt_ros</build_depend>
+  <run_depend>rtt_ros</run_depend>
+
+  <build_depend>rtt_roscomm</build_depend>
+  <run_depend>rtt_roscomm</run_depend>
+
+  <build_depend>diagnostic_msgs</build_depend>
+  <run_depend>diagnostic_msgs</run_depend>
+
+  <build_depend>sensor_msgs</build_depend>
+  <run_depend>sensor_msgs</run_depend>
+
+  <build_depend>tue_control_rtt_msgs</build_depend>
+  <run_depend>tue_control_rtt_msgs</run_depend>
+
+  <build_depend>tue_control</build_depend>
+  <run_depend>tue_control</run_depend>
 
   <export>
     <rtt_ros>
-      <!-- Plugin deps are loaded automatically by the rtt_ros import service -->
-      <plugin_depend>rtt_sensor_msgs</plugin_depend>
+        <plugin_depend>rtt_diagnostic_msgs</plugin_depend>
+        <plugin_depend>rtt_sensor_msgs</plugin_depend>
+        <plugin_depend>tue_control_rtt_msgs</plugin_depend>
     </rtt_ros>
   </export>
 

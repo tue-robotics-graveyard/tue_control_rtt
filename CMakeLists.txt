@@ -3,6 +3,12 @@ project(tue_control_rtt)
 
 find_package(catkin REQUIRED COMPONENTS
     rtt_ros
+    rtt_roscomm
+
+    diagnostic_msgs
+    sensor_msgs
+    tue_control_rtt_msgs
+
     tue_control
 )
 

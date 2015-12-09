@@ -1,0 +1,7 @@
+import("rtt_ros")
+ros.import("tue_control_rtt")
+
+loadComponent("controller_manager","tue::control::rtt::ControllerManagerComponent")
+
+loadService("controller_manager","rosservice")
+some_component_name.rosservice.connect("controller_manager.controllerManagerAction", "/controller_manager_action", "std_srvs/ControllerManagerAction")
