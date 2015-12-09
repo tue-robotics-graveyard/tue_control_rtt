@@ -1,7 +1,7 @@
 #ifndef JOINT_STATE_PUBLISHER_H
 #define JOINT_STATE_PUBLISHER_H
 
-#include <rtt/OutputPort.hpp>
+#include "publisher.h"
 #include <sensor_msgs/JointState.h>
 
 namespace tue
@@ -13,17 +13,11 @@ namespace control
 namespace rtt
 {
 
-class JointStatePublisher
+class JointStatePublisher : public Publisher<sensor_msgs::JointState>
 {
-public:
-
-    JointStatePublisher();
-    ~JointStatePublisher();
-
-    RTT::OutputPort<sensor_msgs::JointState>& getPort() { return port_; }
-
 protected:
-    RTT::OutputPort<sensor_msgs::JointState> port_;
+    virtual void mapMessage(const ControllerManager& manager, sensor_msgs::JointState& message);
+    void getNamePositionVelocityEffortFromController(const ControllerManager& manager, unsigned int idx, std::string& name, double& position, double& velocity, double& effort);
 
 };
 

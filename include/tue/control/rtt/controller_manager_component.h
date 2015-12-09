@@ -85,14 +85,16 @@ protected:
      */
     virtual void stopHook();
 
+    //! OROCOS I / O
+
     //! Controller manager
     std::string configuration_path_;
-    ControllerManager manager;
+    ControllerManager manager_;
 
-    //! OROCOS I/O
+    //! OROCOS ROS I/O
     void addTopicPort(const std::string& name, RTT::base::PortInterface& port);
 
-    // ROS inputs
+    //! Dashboard actions input port
     RTT::InputPort<tue_control_rtt_msgs::ControllerManagerAction> controller_manager_action_input_port_;
 
     //! Diagnostics publisher
