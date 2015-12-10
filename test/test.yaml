@@ -1,0 +1,23 @@
+dt: 0.001
+controllers:
+
+- name: lpera_q1
+  input:
+    port: lpera_pos_in
+    index: 0
+  output:
+    port: lpera_out
+    index: 0
+  type: generic
+  gain: 1
+
+- name: lpera_q2
+  input:
+    port: lpera_pos_in
+    index: 1
+  output:
+    port: lpera_out
+    index: 1
+  type: generic
+  gain: 1 
+
