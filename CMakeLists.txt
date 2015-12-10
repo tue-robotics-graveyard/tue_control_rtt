@@ -30,8 +30,17 @@ add_library(tue_control_rtt_util
 )
 target_link_libraries(tue_control_rtt_util ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES})
 
-orocos_component(controller_manager_component src/controller_manager_component.cpp include/tue/control/rtt/controller_manager_component.h)
+orocos_component(controller_manager_component
+    src/controller_manager_component.cpp
+    include/tue/control/rtt/controller_manager_component.h
+)
 target_link_libraries(controller_manager_component tue_control_rtt_util)
+
+orocos_component(reference_generator_component
+    src/reference_generator_component.cpp
+    include/tue/control/rtt/reference_generator_component.h
+)
+target_link_libraries(reference_generator_component ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES})
 
 # --------------------------------------------------------------------------------
 #                                 SIMULATION

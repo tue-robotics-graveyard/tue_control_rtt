@@ -105,7 +105,7 @@ bool ControllerManagerComponent::configureHook()
 
     if (dt_ <= 0)
     {
-        RTT::log(RTT::Error) << "SimPlant: 'sampling_time' not set or <= 0" << RTT::endlog();
+        RTT::log(RTT::Error) << "ControllerManagerComponent: 'sampling_time' not set or <= 0" << RTT::endlog();
         return false;
     }
 

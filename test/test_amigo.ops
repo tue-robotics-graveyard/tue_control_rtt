@@ -3,6 +3,20 @@ ros.import("tue_control_rtt")
 
 var double TS = 0.001
 
+# ---------------------------------------------------------------------------
+# Reference Generator
+
+loadComponent("refgen","tue::control::rtt::ReferenceGeneratorComponent")
+refgen.configuration_rospkg = "tue_control_rtt"
+refgen.configuration_path = "test/amigo.yaml"
+refgen.sampling_time = TS
+refgen.configure
+
+setActivity("refgen", TS, HighestPriority, ORO_SCHED_RT)
+
+# ---------------------------------------------------------------------------
+# Controllers
+
 loadComponent("controllers","tue::control::rtt::ControllerManagerComponent")
 controllers.configuration_rospkg = "tue_control_rtt"
 controllers.configuration_path = "test/amigo.yaml"
@@ -49,6 +63,7 @@ connect("controllers.lpera_out", "lpera.efforts", ConnPolicy());
 controllers.start
 torso.start
 lpera.start
+refgen.start
 
 
 
