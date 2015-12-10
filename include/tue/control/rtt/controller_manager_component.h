@@ -116,12 +116,17 @@ protected:
      */
     virtual void stopHook();
 
-    //! OROCOS I / O
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Properties
 
-    //! Controller manager
     std::string configuration_path_;
     std::string configuration_rospkg_;
 
+    double dt_;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    //! Controller manager
     ControllerManager manager_;
 
     //! OROCOS ROS I/O

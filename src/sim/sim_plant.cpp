@@ -19,6 +19,7 @@ SimPlant::SimPlant(const std::string& name) :
 {
     addProperty("sampling_time", dt_);
     addProperty("masses", masses_);
+    addProperty("dampings", dampings_);
     addProperty("positions", positions_);
 
     addPort("positions", out_port_positions_);
@@ -57,6 +58,12 @@ bool SimPlant::configureHook()
         return false;
     }
 
+    if (!dampings_.empty() && dampings_.size() != masses_.size())
+    {
+        RTT::log(RTT::Error) << "'dampings' (array of doubles) not same size as 'masses'" << RTT::endlog();
+        return false;
+    }
+
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Initialize systems
 
@@ -65,6 +72,9 @@ bool SimPlant::configureHook()
     {
         systems_[i].setMass(masses_[i]);
         systems_[i].setPosition(positions_[i]);
+
+        if (i < dampings_.size())
+            systems_[i].setDamping(dampings_[i]);
     }
 
     in_efforts_.resize(systems_.size());
@@ -90,7 +100,9 @@ void SimPlant::updateHook()
     for(unsigned int i = 0; i < systems_.size(); ++i)
     {
         SimpleSystem& s = systems_[i];
-        s.update(in_efforts_[i], dt_);
+
+        double effort = i < in_efforts_.size() ? in_efforts_[i] : 0.0;
+        s.update(effort, dt_);
     }
 
     for(unsigned int i = 0; i < systems_.size(); ++i)

@@ -21,15 +21,26 @@ class SimpleSystem
 
 public:
 
+    SimpleSystem() : damping_ (0) {}
+
     void setMass(double mass) { mass_ = mass; }
+
+    void setDamping(double damping) { damping_ = damping; }
 
     void setPosition(double pos) { pos_ = pos; vel_ = 0; }
 
     void update(double f, double dt)
     {
+        // I know, this is not correct, but close enough for small dt (TODO)
+
+        // Apply damping
+        f -= vel_ * damping_;
+
         double a = f / mass_;
-        vel_ += dt * a;
-        pos_ += dt * vel_;
+
+        double vel_step = dt * a;
+        pos_ += dt * (vel_ + 0.5 * vel_step);
+        vel_ += vel_step;
     }
 
     double position() const { return pos_; }
@@ -39,6 +50,7 @@ private:
     double mass_;
     double pos_;
     double vel_;
+    double damping_;
 
 };
 
@@ -107,6 +119,7 @@ protected:
     // Properties
     double dt_;                      // sampling time
     std::vector<double> masses_;     // system masses
+    std::vector<double> dampings_;     // system dampings
     std::vector<double> positions_;  // initial positions
 
 

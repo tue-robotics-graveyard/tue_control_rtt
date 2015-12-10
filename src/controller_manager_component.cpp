@@ -60,6 +60,7 @@ T* addOrUpdateConnection(ControllerManagerComponent* compoment, std::map<std::st
 
 ControllerManagerComponent::ControllerManagerComponent(const std::string& name) :
     RTT::TaskContext(name),
+    dt_(0),
     diagnostics_publisher_(new DiagnosticsPublisher),
     joint_state_publisher_(new JointStatePublisher)
 {
@@ -69,6 +70,7 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
 
     addProperty("configuration_rospkg", configuration_rospkg_);
     addProperty("configuration_path", configuration_path_);
+    addProperty("sampling_time", dt_);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -76,7 +78,8 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
 void ControllerManagerComponent::addTopicPort(const std::string& name, RTT::base::PortInterface& port)
 {
     addPort(name, port);
-    port.createStream(rtt_roscomm::topic("~" + this->getName() + "/" + name));
+//    port.createStream(rtt_roscomm::topic("~" + this->getName() + "/" + name));
+    port.createStream(rtt_roscomm::topic(name));
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -97,6 +100,15 @@ ControllerManagerComponent::~ControllerManagerComponent()
 
 bool ControllerManagerComponent::configureHook()
 {
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Check input properties
+
+    if (dt_ <= 0)
+    {
+        RTT::log(RTT::Error) << "SimPlant: 'sampling_time' not set or <= 0" << RTT::endlog();
+        return false;
+    }
+
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Determine configuration file path
 
@@ -135,6 +147,7 @@ bool ControllerManagerComponent::configureHook()
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Configure manager
 
+    config.setValue("dt", dt_);
     manager_.configure(config);
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
