@@ -1,0 +1,54 @@
+import("rtt_ros")
+ros.import("tue_control_rtt")
+
+var double TS = 0.001
+
+loadComponent("controllers","tue::control::rtt::ControllerManagerComponent")
+controllers.configuration_rospkg = "tue_control_rtt"
+controllers.configuration_path = "test/amigo.yaml"
+controllers.sampling_time = TS
+controllers.configure
+
+setActivity("controllers", TS, HighestPriority, ORO_SCHED_RT)
+
+# ---------------------------------------------------------------------------
+# Simulation
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# Torso spindle
+
+loadComponent("torso", "tue::control::rtt::SimPlant")
+torso.masses    = array(-1.0)
+torso.dampings  = array(-1000.0)
+torso.positions = array(0.1)
+torso.sampling_time = TS
+torso.configure
+
+setActivity("torso", 0.001, HighestPriority, ORO_SCHED_RT)
+
+connect("torso.positions", "controllers.torso_pos_in", ConnPolicy());
+connect("controllers.torso_out", "torso.efforts", ConnPolicy());
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# LPERA (left arm)
+
+loadComponent("lpera", "tue::control::rtt::SimPlant")
+lpera.masses    = array(1.0,    1.0,    1.0,    1.0,    1.0,    1.0,    1.0)
+lpera.dampings  = array(1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0)
+lpera.positions = array(0.1,    0.1,    0.1,    0.1,    0.1,    0.1,    0.1)
+lpera.sampling_time = TS
+lpera.configure
+
+setActivity("lpera", 0.001, HighestPriority, ORO_SCHED_RT)
+
+connect("lpera.positions", "controllers.lpera_pos_in", ConnPolicy());
+connect("controllers.lpera_out", "lpera.efforts", ConnPolicy());
+
+# ---------------------------------------------------------------------------
+
+controllers.start
+torso.start
+lpera.start
+
+
+

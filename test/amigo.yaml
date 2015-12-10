@@ -1,0 +1,219 @@
+controllers:
+
+# ----------------------------------------------------------------------------------------------------
+#                                            TORSO SPINDLE
+# ----------------------------------------------------------------------------------------------------
+
+- name: torso_joint
+  input:
+    port: torso_pos_in
+    index: 0
+  output:
+    port: torso_out
+    index: 0
+  type: generic
+  gain: -80
+  filters:
+    weak_integrator:
+      fz: 0.03
+    lead_lag:
+      fz: 1.6
+      fp: 60
+    second_order_low_pass:
+      fp: 20
+      dp: 0.7
+  feedforward:
+    gravity: 0.07
+    static: 0.05
+    dynamic: 0.4
+    acceleration: 0.3
+    direction: -1 
+#  safety:
+#    max_error: 10
+#    output_saturation: 1
+  homing:
+    velocity: 0.01
+    acceleration: 0.02
+#    preconditions:
+#    - homed: foo
+
+# ----------------------------------------------------------------------------------------------------
+#                                           LEFT ARM (LPERA)
+# ----------------------------------------------------------------------------------------------------
+
+- name: shoulder_yaw_joint_left   # q1
+  input:
+    port: lpera_pos_in
+    index: 0
+  output:
+    port: lpera_out
+    index: 0
+  type: generic
+  gain: 20000
+  filters:
+    weak_integrator:
+      fz: 0.0065
+    lead_lag:
+      fz: 25
+      fp: 80
+    second_order_low_pass:
+      fp: 125
+      dp: 0.7
+#  safety:
+#    max_error: 0.09
+#    output_saturation: 1000
+#  homing:
+#    velocity: 0.05
+#    acceleration: 0.2
+
+- name: shoulder_pitch_joint_left   # q2
+  input:
+    port: lpera_pos_in
+    index: 1
+  output:
+    port: lpera_out
+    index: 1
+  type: generic
+  gain: 20000
+  filters:
+    weak_integrator:
+      fz: 0.0065
+    lead_lag:
+      fz: 25
+      fp: 80
+    second_order_low_pass:
+      fp: 125
+      dp: 0.7
+#  safety:
+#    max_error:
+#    output_saturation:
+#  homing:
+#    velocity:
+#    acceleration:
+
+- name: shoulder_roll_joint_left   # q3
+  input:
+    port: lpera_pos_in
+    index: 2
+  output:
+    port: lpera_out
+    index: 2
+  type: generic
+  gain: 10000
+  filters:
+    weak_integrator:
+      fz: 0.009
+    lead_lag:
+      fz: 15
+      fp: 40
+    second_order_low_pass:
+      fp: 125
+      dp: 0.7
+#  safety:
+#    max_error:
+#    output_saturation:
+#  homing:
+#    velocity:
+#    acceleration:
+
+- name: elbow_pitch_joint_left     # q4
+  input:
+    port: lpera_pos_in
+    index: 3
+  output:
+    port: lpera_out
+    index: 3
+  type: generic
+  gain: 17500
+  filters:
+    weak_integrator:
+      fz: 0.004
+    lead_lag:
+      fz: 100
+      fp: 200
+    second_order_low_pass:
+      fp: 125
+      dp: 0.7
+#  safety:
+#    max_error:
+#    output_saturation:
+#  homing:
+#    velocity:
+#    acceleration:
+
+- name: elbow_roll_joint_left   # q5
+  input:
+    port: lpera_pos_in
+    index: 4
+  output:
+    port: lpera_out
+    index: 4
+  type: generic
+  gain: 17500
+  filters:
+    weak_integrator:
+      fz: 0.004
+    lead_lag:
+      fz: 100
+      fp: 200
+    second_order_low_pass:
+      fp: 62.5
+      dp: 0.7
+#  safety:
+#    max_error:
+#    output_saturation:
+#  homing:
+#    velocity:
+#    acceleration:
+
+- name: wrist_pitch_joint_left  # q6
+  input:
+    port: lpera_pos_in
+    index: 5
+  output:
+    port: lpera_out
+    index: 5
+  type: generic
+  gain: 17500
+  filters:
+    weak_integrator:
+      fz: 0.02
+    lead_lag:
+      fz: 5
+      fp: 40
+    second_order_low_pass:
+      fp: 125
+      dp: 0.7
+#  safety:
+#    max_error:
+#    output_saturation:
+#  homing:
+#    velocity:
+#    acceleration:
+
+- name: wrist_yaw_joint_left    # q7
+  input:
+    port: lpera_pos_in
+    index: 6
+  output:
+    port: lpera_out
+    index: 6
+  type: generic
+  gain: 21500
+  filters:
+    weak_integrator:
+      fz: 0.02
+    lead_lag:
+      fz: 5
+      fp: 40
+    second_order_low_pass:
+      fp: 125
+      dp: 0.7
+#  safety:
+#    max_error:
+#    output_saturation:
+#  homing:
+#    velocity:
+#    acceleration:
+
+
