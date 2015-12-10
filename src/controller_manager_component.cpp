@@ -27,7 +27,7 @@ namespace
 {
 
 template<typename T>
-T* addOrUpdatePort(ControllerManagerComponent* compoment, std::map<std::string, T*>& connections, tue::Configuration& config)
+T* addOrUpdateConnection(ControllerManagerComponent* compoment, std::map<std::string, T*>& connections, tue::Configuration& config)
 {
     // A connection should always have a "port" and "index"
     int index;
@@ -161,7 +161,7 @@ bool ControllerManagerComponent::configureHook()
 
             if (config.readGroup("input", tue::REQUIRED))
             {
-                io.input = addOrUpdatePort(this, inputs_, config);
+                io.input = addOrUpdateConnection(this, inputs_, config);
                 config.value("index", io.input_index);
                 config.endGroup(); // end group 'input'
             }
@@ -171,7 +171,7 @@ bool ControllerManagerComponent::configureHook()
 
             if (config.readGroup("output", tue::REQUIRED))
             {
-                io.output = addOrUpdatePort(this, outputs_, config);
+                io.output = addOrUpdateConnection(this, outputs_, config);
                 config.value("index", io.output_index);
                 config.endGroup(); // end group 'output'
             }
@@ -225,15 +225,34 @@ void ControllerManagerComponent::updateHook()
 
         // Set reference
         manager_.setReference(controller_idx, 0);
-
-        if (measurement > 0)
-            std::cout << manager_.getName(controller_idx) << ": measurement = " << measurement << std::endl;
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Update the controllers
 
     manager_.update();
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Get outputs from controllers
+
+    for(unsigned int controller_idx = 0; controller_idx < controller_ios_.size(); ++controller_idx)
+    {
+        ControllerIO& io = controller_ios_[controller_idx];
+
+        double output = manager_.getOutput(controller_idx);
+        io.output->data[io.output_index] = output;
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Write outputs
+
+    for(std::map<std::string, ControllerOutput*>::iterator it = outputs_.begin(); it != outputs_.end(); ++it)
+    {
+        ControllerOutput* output = it->second;
+        output->port.write(output->data);
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     joint_state_publisher_->publish();
     diagnostics_publisher_->publish();
