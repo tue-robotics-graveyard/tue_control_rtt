@@ -23,6 +23,41 @@ namespace rtt
 
 // ----------------------------------------------------------------------------------------------------
 
+namespace
+{
+
+template<typename T>
+T* addOrUpdatePort(ControllerManagerComponent* compoment, std::map<std::string, T*>& connections, tue::Configuration& config)
+{
+    // A connection should always have a "port" and "index"
+    int index;
+    std::string port_name;
+    if (!config.value("port", port_name) | !config.value("index", index))
+        return NULL;
+
+    T* connection;
+    typename std::map<std::string, T*>::iterator it = connections.find(port_name);
+    if (it == connections.end())
+    {
+        connection = new T;
+        compoment->addPort(port_name, connection->port);
+        connections[port_name] = connection;
+    }
+    else
+    {
+        connection = it->second;
+    }
+
+    if (index + 1 > connection->data.size())
+        connection->data.resize(index + 1, 0);
+
+    return connection;
+}
+
+}
+
+// ----------------------------------------------------------------------------------------------------
+
 ControllerManagerComponent::ControllerManagerComponent(const std::string& name) :
     RTT::TaskContext(name),
     diagnostics_publisher_(new DiagnosticsPublisher),
@@ -50,12 +85,21 @@ ControllerManagerComponent::~ControllerManagerComponent()
 {
     delete diagnostics_publisher_;
     delete joint_state_publisher_;
+
+    for(std::map<std::string, ControllerInput*>::iterator it = inputs_.begin(); it != inputs_.end(); ++it)
+        delete it->second;
+
+    for(std::map<std::string, ControllerOutput*>::iterator it = outputs_.begin(); it != outputs_.end(); ++it)
+        delete it->second;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 bool ControllerManagerComponent::configureHook()
 {
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Determine configuration file path
+
     if (configuration_path_.empty())
     {
         RTT::log(RTT::Error) << "ControllerManagerComponent::configureHook(): no configuration_path property specified" << RTT::endlog();
@@ -77,6 +121,9 @@ bool ControllerManagerComponent::configureHook()
     }
     config_path += configuration_path_;
 
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Load configuration file
+
     Configuration config;
     config.loadFromYAMLFile(config_path);
     if (config.hasError())
@@ -85,7 +132,54 @@ bool ControllerManagerComponent::configureHook()
         return false;
     }
 
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Configure manager
+
     manager_.configure(config);
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Configure in and out ports
+
+    controller_ios_.resize(manager_.getNumControllers());
+
+    if (config.readArray("controllers"))
+    {
+        while(config.nextArrayItem())
+        {
+            std::string controller_name;
+            if (!config.value("name", controller_name))
+                continue;
+
+            int controller_idx = manager_.getControllerIdx(controller_name);
+            if (controller_idx < 0)
+                continue;
+
+            ControllerIO& io = controller_ios_[controller_idx];
+
+            // - - - - - - - - - - - - - - - - - - - - - -
+            // Configure in port
+
+            if (config.readGroup("input", tue::REQUIRED))
+            {
+                io.input = addOrUpdatePort(this, inputs_, config);
+                config.value("index", io.input_index);
+                config.endGroup(); // end group 'input'
+            }
+
+            // - - - - - - - - - - - - - - - - - - - - - -
+            // Configure out port
+
+            if (config.readGroup("output", tue::REQUIRED))
+            {
+                io.output = addOrUpdatePort(this, outputs_, config);
+                config.value("index", io.output_index);
+                config.endGroup(); // end group 'output'
+            }
+
+        }
+        config.endArray();
+    }
+
     if (config.hasError())
     {
         RTT::log(RTT::Error) << "ControllerManagerComponent::configureHook(): " << config.error() << RTT::endlog();
@@ -109,6 +203,38 @@ bool ControllerManagerComponent::startHook()
 
 void ControllerManagerComponent::updateHook()
 {
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Read measurements
+
+    for(std::map<std::string, ControllerInput*>::iterator it = inputs_.begin(); it != inputs_.end(); ++it)
+    {
+        ControllerInput* input = it->second;
+        input->port.read(input->data);
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Set references and measurements to the controllers
+
+    for(unsigned int controller_idx = 0; controller_idx < controller_ios_.size(); ++controller_idx)
+    {
+        ControllerIO& io = controller_ios_[controller_idx];
+
+        // Set measurement
+        double measurement = io.input->data[io.input_index];
+        manager_.setMeasurement(controller_idx, measurement);
+
+        // Set reference
+        manager_.setReference(controller_idx, 0);
+
+        if (measurement > 0)
+            std::cout << manager_.getName(controller_idx) << ": measurement = " << measurement << std::endl;
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Update the controllers
+
+    manager_.update();
+
     joint_state_publisher_->publish();
     diagnostics_publisher_->publish();
 }

@@ -25,6 +25,37 @@ namespace rtt
 class DiagnosticsPublisher;
 class JointStatePublisher;
 
+// ----------------------------------------------------------------------------------------------------
+
+struct ControllerInput
+{
+    RTT::InputPort<std::vector<double> > port;
+    std::vector<double> data;
+};
+
+// ----------------------------------------------------------------------------------------------------
+
+struct ControllerOutput
+{
+    RTT::OutputPort<std::vector<double> > port;
+    std::vector<double> data;
+};
+
+// ----------------------------------------------------------------------------------------------------
+
+struct ControllerIO
+{
+    ControllerIO() : input(NULL), output(NULL) {}
+
+    ControllerInput* input;
+    int input_index;
+
+    ControllerOutput* output;
+    int output_index;
+};
+
+// ----------------------------------------------------------------------------------------------------
+
 class ControllerManagerComponent : public RTT::TaskContext
 {
 public:
@@ -104,6 +135,11 @@ protected:
 
     //! Joint state publisher
     JointStatePublisher* joint_state_publisher_;
+
+
+    std::vector<ControllerIO> controller_ios_;
+    std::map<std::string, ControllerInput*> inputs_;
+    std::map<std::string, ControllerOutput*> outputs_;
 
 };
 
