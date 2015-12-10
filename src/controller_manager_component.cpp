@@ -85,12 +85,15 @@ bool ControllerManagerComponent::configureHook()
         return false;
     }
 
-    manager.configure(config);
+    manager_.configure(config);
     if (config.hasError())
     {
         RTT::log(RTT::Error) << "ControllerManagerComponent::configureHook(): " << config.error() << RTT::endlog();
         return false;
     }
+
+    diagnostics_publisher_->configure(manager_, 10);
+    joint_state_publisher_->configure(manager_, 10);
 
     return true;
 }
@@ -106,6 +109,8 @@ bool ControllerManagerComponent::startHook()
 
 void ControllerManagerComponent::updateHook()
 {
+    joint_state_publisher_->publish();
+    diagnostics_publisher_->publish();
 }
 
 // ----------------------------------------------------------------------------------------------------

@@ -1,8 +1,7 @@
-#ifndef DIAGNOSTICS_PUBLISHER_H
-#define DIAGNOSTICS_PUBLISHER_H
+#ifndef TUE_CONTROL_RTT_DIAGNOSTICS_PUBLISHER_H
+#define TUE_CONTROL_RTT_DIAGNOSTICS_PUBLISHER_H
 
-#include <rtt/OutputPort.hpp>
-#include <rtt/TaskContext.hpp>
+#include "publisher.h"
 #include <diagnostic_msgs/DiagnosticArray.h>
 
 namespace tue
@@ -14,18 +13,12 @@ namespace control
 namespace rtt
 {
 
-class DiagnosticsPublisher
+class DiagnosticsPublisher : public Publisher<diagnostic_msgs::DiagnosticArray>
 {
-public:
-
-    DiagnosticsPublisher();
-    ~DiagnosticsPublisher();
-
-    RTT::OutputPort<diagnostic_msgs::DiagnosticArray>& getPort() { return port_; }
 
 protected:
-    std::string name_;
-    RTT::OutputPort<diagnostic_msgs::DiagnosticArray> port_;
+    virtual void mapMessage(const ControllerManager& manager, diagnostic_msgs::DiagnosticArray& message);
+    void getDiagnosticsStatusFromController(const ControllerManager &manager, unsigned int idx, diagnostic_msgs::DiagnosticStatus& status);
 
 };
 

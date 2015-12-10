@@ -21,6 +21,8 @@ include_directories(
 ### Orocos Targets ###
 
 add_library(tue_control_rtt_util
+            src/util/event_clock.h
+            src/util/publisher.h
             src/util/diagnostics_publisher.cpp
             src/util/diagnostics_publisher.h
             src/util/joint_state_publisher.cpp
