@@ -2,7 +2,8 @@ import("rtt_ros")
 ros.import("tue_control_rtt")
 
 loadComponent("controller_manager","tue::control::rtt::ControllerManagerComponent")
-controller_manager.configuration_path = "/home/amigo/ros/indigo/dev/src/tue_control/test/test.yaml"
+controller_manager.configuration_rospkg = "tue_control"
+controller_manager.configuration_path = "test/test.yaml"
 controller_manager.configure
 
 setActivity("controller_manager", 0.001, HighestPriority, ORO_SCHED_RT)

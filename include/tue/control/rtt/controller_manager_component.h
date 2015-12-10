@@ -87,6 +87,7 @@ protected:
 
     //! Controller manager
     std::string configuration_path_;
+    std::string configuration_rospkg_;
     ControllerManager manager;
 
     //! OROCOS I/O

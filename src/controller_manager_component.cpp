@@ -10,6 +10,8 @@
 #include "util/diagnostics_publisher.h"
 #include "util/joint_state_publisher.h"
 
+#include <ros/package.h>
+
 namespace tue
 {
 
@@ -30,6 +32,7 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
     addTopicPort("joint_states", joint_state_publisher_->getPort());
     addTopicPort("action", controller_manager_action_input_port_);
 
+    addProperty("configuration_rospkg", configuration_rospkg_);
     addProperty("configuration_path", configuration_path_);
 }
 
@@ -59,8 +62,23 @@ bool ControllerManagerComponent::configureHook()
         return false;
     }
 
+    std::string config_path;
+    if (!configuration_rospkg_.empty() && configuration_path_[0] != '/')
+    {
+        config_path = ros::package::getPath(configuration_rospkg_);
+        if (config_path.empty())
+        {
+            RTT::log(RTT::Error) << "ControllerManagerComponent::configureHook(): configuration_rospkg: "
+                                 << "No such ros package: '" << configuration_rospkg_ << "'" << RTT::endlog();
+            return false;
+        }
+        config_path += "/";
+
+    }
+    config_path += configuration_path_;
+
     Configuration config;
-    config.loadFromYAMLFile(configuration_path_);
+    config.loadFromYAMLFile(config_path);
     if (config.hasError())
     {
         RTT::log(RTT::Error) << "ControllerManagerComponent::configureHook(): " << config.error() << RTT::endlog();
@@ -81,8 +99,6 @@ bool ControllerManagerComponent::configureHook()
 
 bool ControllerManagerComponent::startHook()
 {
-    // Nothing for now :)
-
     return true;
 }
 
