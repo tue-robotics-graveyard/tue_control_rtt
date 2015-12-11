@@ -25,6 +25,11 @@ controllers.configure
 
 setActivity("controllers", TS, HighestPriority, ORO_SCHED_RT)
 
+connect("controllers.reset_pos", "refgen.reset_pos", ConnPolicy())
+connect("refgen.ref_pos", "controllers.ref_pos", ConnPolicy())
+connect("refgen.ref_vel", "controllers.ref_vel", ConnPolicy())
+connect("refgen.ref_acc", "controllers.ref_acc", ConnPolicy())
+
 # ---------------------------------------------------------------------------
 # Simulation
 

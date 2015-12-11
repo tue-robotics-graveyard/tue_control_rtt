@@ -49,7 +49,7 @@ T* addOrUpdateConnection(ControllerManagerComponent* compoment, std::map<std::st
     }
 
     if (index + 1 > connection->data.size())
-        connection->data.resize(index + 1, 0);
+        connection->data.resize(index + 1, INVALID_DOUBLE);
 
     return connection;
 }
@@ -71,6 +71,14 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
     addProperty("configuration_rospkg", configuration_rospkg_);
     addProperty("configuration_path", configuration_path_);
     addProperty("sampling_time", dt_);
+
+    // Input ports
+    addPort("ref_pos", in_port_ref_positions_);
+    addPort("ref_vel", in_port_ref_velocities_);
+    addPort("ref_acc", in_port_ref_accelerations_);
+
+    // Output ports
+    addPort("reset_pos", out_port_set_refgen_positions_);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -153,7 +161,7 @@ bool ControllerManagerComponent::configureHook()
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Configure in and out ports
 
-    controller_ios_.resize(manager_.getNumControllers());
+    controller_infos_.resize(manager_.getNumControllers());
 
     if (config.readArray("controllers"))
     {
@@ -167,7 +175,7 @@ bool ControllerManagerComponent::configureHook()
             if (controller_idx < 0)
                 continue;
 
-            ControllerIO& io = controller_ios_[controller_idx];
+            ControllerInfo& io = controller_infos_[controller_idx];
 
             // - - - - - - - - - - - - - - - - - - - - - -
             // Configure in port
@@ -202,6 +210,15 @@ bool ControllerManagerComponent::configureHook()
     diagnostics_publisher_->configure(manager_, 10);
     joint_state_publisher_->configure(manager_, 10);
 
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    unsigned int num_joints = manager_.getNumControllers();
+
+    new_refgen_positions_.resize(num_joints, INVALID_DOUBLE);
+    ref_positions_.resize(num_joints, INVALID_DOUBLE);
+    ref_velocities_.resize(num_joints, INVALID_DOUBLE);
+    ref_accelerations_.resize(num_joints, INVALID_DOUBLE);
+
     return true;
 }
 
@@ -226,18 +243,32 @@ void ControllerManagerComponent::updateHook()
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Read references
+
+    in_port_ref_positions_.read(ref_positions_);
+    in_port_ref_velocities_.read(ref_velocities_);
+    in_port_ref_accelerations_.read(ref_accelerations_);
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Set references and measurements to the controllers
 
-    for(unsigned int controller_idx = 0; controller_idx < controller_ios_.size(); ++controller_idx)
+    for(unsigned int controller_idx = 0; controller_idx < controller_infos_.size(); ++controller_idx)
     {
-        ControllerIO& io = controller_ios_[controller_idx];
+        ControllerInfo& info = controller_infos_[controller_idx];
 
         // Set measurement
-        double measurement = io.input->data[io.input_index];
+        double measurement = info.input->data[info.input_index];
         manager_.setMeasurement(controller_idx, measurement);
 
         // Set reference
-        manager_.setReference(controller_idx, 0);
+        if (info.status == READY && is_set(ref_positions_[controller_idx]))
+        {
+            manager_.setReference(controller_idx, ref_positions_[controller_idx], ref_velocities_[controller_idx], ref_accelerations_[controller_idx]);
+        }
+        else
+        {
+            manager_.setReference(controller_idx, measurement, 0, 0);
+        }
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -248,12 +279,12 @@ void ControllerManagerComponent::updateHook()
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Get outputs from controllers
 
-    for(unsigned int controller_idx = 0; controller_idx < controller_ios_.size(); ++controller_idx)
+    for(unsigned int controller_idx = 0; controller_idx < controller_infos_.size(); ++controller_idx)
     {
-        ControllerIO& io = controller_ios_[controller_idx];
-
+        ControllerInfo& info = controller_infos_[controller_idx];
         double output = manager_.getOutput(controller_idx);
-        io.output->data[io.output_index] = output;
+        info.output->data[info.output_index] = output;
+
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -263,6 +294,44 @@ void ControllerManagerComponent::updateHook()
     {
         ControllerOutput* output = it->second;
         output->port.write(output->data);
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Check if controllers change from non-ready to ready. If so, notify the reference
+    // generator of the current position of this controller
+
+    bool new_refgen_position = false;
+    for(unsigned int controller_idx = 0; controller_idx < controller_infos_.size(); ++controller_idx)
+    {
+        ControllerInfo& info = controller_infos_[controller_idx];
+
+        ControllerStatus old_status = info.status;
+        ControllerStatus new_status = manager_.getStatus(controller_idx);
+
+        if (old_status != tue::control::READY && new_status == READY)
+        {
+            double measurement = manager_.getMeasurement(controller_idx);
+            if (is_set(measurement))
+            {
+                std::cout << "Controller " << controller_idx << " just got ready (current position = " << measurement << ")" << std::endl;
+
+                // Controller just switched to ready. Notify reference generator of current position measurement
+                new_refgen_positions_[controller_idx] = measurement;
+                new_refgen_position = true;
+
+                info.status = new_status;
+            }
+        }
+        else
+        {
+            info.status = new_status;
+        }
+    }
+
+    if (new_refgen_position)
+    {
+        out_port_set_refgen_positions_.write(new_refgen_positions_);
+        std::fill(new_refgen_positions_.begin(), new_refgen_positions_.end(), INVALID_DOUBLE);
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -279,10 +348,10 @@ void ControllerManagerComponent::stopHook()
 
 // ----------------------------------------------------------------------------------------------------
 
-}
+} // end rtt namespace
 
-}
+} // end control namespace
 
-}
+} // end tue namespace
 
 ORO_CREATE_COMPONENT(tue::control::rtt::ControllerManagerComponent)

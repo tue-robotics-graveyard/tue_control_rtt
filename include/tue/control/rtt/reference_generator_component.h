@@ -4,6 +4,8 @@
 #include <rtt/TaskContext.hpp>
 #include <rtt/OutputPort.hpp>
 
+#include <tue/manipulation/reference_generator.h>
+
 namespace tue
 {
 
@@ -33,6 +35,13 @@ private:
     double dt_;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Input
+
+    std::vector<double> reset_positions_;
+
+    RTT::InputPort<std::vector<double> > in_port_reset_positions_;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Ouptut
 
     std::vector<double> ref_positions_;
@@ -42,6 +51,10 @@ private:
     RTT::OutputPort<std::vector<double> > out_port_ref_positions_;
     RTT::OutputPort<std::vector<double> > out_port_ref_velocities_;
     RTT::OutputPort<std::vector<double> > out_port_ref_accelerations_;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    tue::manipulation::ReferenceGenerator reference_generator_;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

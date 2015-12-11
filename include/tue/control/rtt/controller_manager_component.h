@@ -43,9 +43,15 @@ struct ControllerOutput
 
 // ----------------------------------------------------------------------------------------------------
 
-struct ControllerIO
+struct ControllerInfo
 {
-    ControllerIO() : input(NULL), output(NULL) {}
+    ControllerInfo() : status(UNINITIALIZED), input(NULL), output(NULL) {}
+
+    // Status
+
+    ControllerStatus status;
+
+    // IO
 
     ControllerInput* input;
     int input_index;
@@ -141,8 +147,24 @@ protected:
     //! Joint state publisher
     JointStatePublisher* joint_state_publisher_;
 
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Communication with reference generator
 
-    std::vector<ControllerIO> controller_ios_;
+    std::vector<double> new_refgen_positions_;
+    RTT::OutputPort<std::vector<double> > out_port_set_refgen_positions_;
+
+    std::vector<double> ref_positions_;
+    std::vector<double> ref_velocities_;
+    std::vector<double> ref_accelerations_;
+
+    RTT::InputPort<std::vector<double> > in_port_ref_positions_;
+    RTT::InputPort<std::vector<double> > in_port_ref_velocities_;
+    RTT::InputPort<std::vector<double> > in_port_ref_accelerations_;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+    std::vector<ControllerInfo> controller_infos_;
     std::map<std::string, ControllerInput*> inputs_;
     std::map<std::string, ControllerOutput*> outputs_;
 

@@ -1,3 +1,8 @@
+reference_generator:
+  urdf_file: $(rospkg amigo_description)/urdf/amigo.urdf
+
+# ----------------------------------------------------------------------------------------------------
+
 controllers:
 
 # ----------------------------------------------------------------------------------------------------
@@ -31,9 +36,9 @@ controllers:
 #  safety:
 #    max_error: 10
 #    output_saturation: 1
-  homing:
-    velocity: 0.01
-    acceleration: 0.02
+#  homing:
+#    velocity: 0.01
+#    acceleration: 0.02
 #    preconditions:
 #    - homed: foo
 

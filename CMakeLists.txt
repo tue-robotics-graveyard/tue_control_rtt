@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
     tue_control
     tue_config
     roslib  # Used for find package
+
+    tue_manipulation  # For reference generator
 )
 
 include_directories(
