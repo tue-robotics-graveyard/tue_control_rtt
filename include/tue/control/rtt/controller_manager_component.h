@@ -6,18 +6,17 @@
 #include <rtt/OutputPort.hpp>
 
 //! ROS
-#include <diagnostic_msgs/DiagnosticArray.h>
-#include <sensor_msgs/JointState.h>
 #include <tue_control_rtt_msgs/ControllerManagerAction.h>
 
-//! CONTROL
-#include <tue/control/controller_manager.h>
+#include "tue/control/rtt/event_clock.h"
 
 namespace tue
 {
 
 namespace control
 {
+
+class SupervisedController;
 
 namespace rtt
 {
@@ -45,11 +44,7 @@ struct ControllerOutput
 
 struct ControllerInfo
 {
-    ControllerInfo() : status(UNINITIALIZED), input(NULL), output(NULL) {}
-
-    // Status
-
-    ControllerStatus status;
+    ControllerInfo() : input(nullptr), output(nullptr) {}
 
     // IO
 
@@ -58,6 +53,8 @@ struct ControllerInfo
 
     ControllerOutput* output;
     int output_index;
+
+    std::shared_ptr<SupervisedController> controller;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -132,9 +129,6 @@ protected:
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    //! Controller manager
-    ControllerManager manager_;
-
     //! OROCOS ROS I/O
     void addTopicPort(const std::string& name, RTT::base::PortInterface& port);
 
@@ -142,9 +136,11 @@ protected:
     RTT::InputPort<tue_control_rtt_msgs::ControllerManagerAction> controller_manager_action_input_port_;
 
     //! Diagnostics publisher
+    EventClock diagnostics_publisher_clock_;
     DiagnosticsPublisher* diagnostics_publisher_;
 
     //! Joint state publisher
+    EventClock joint_state_publisher_clock_;
     JointStatePublisher* joint_state_publisher_;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -162,7 +158,6 @@ protected:
     RTT::InputPort<std::vector<double> > in_port_ref_accelerations_;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 
     std::vector<ControllerInfo> controller_infos_;
     std::map<std::string, ControllerInput*> inputs_;

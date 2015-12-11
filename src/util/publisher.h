@@ -2,7 +2,6 @@
 #define TUE_CONTROL_RTT_PUBLISHER_H
 
 #include <rtt/OutputPort.hpp>
-#include <tue/control/controller_manager.h>
 
 #include "event_clock.h"
 

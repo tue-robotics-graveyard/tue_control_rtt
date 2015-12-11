@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
     tue_manipulation  # For reference generator
 )
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
 include_directories(
     include
     ${catkin_INCLUDE_DIRS}
@@ -23,12 +25,11 @@ include_directories(
 ### Orocos Targets ###
 
 add_library(tue_control_rtt_util
-            src/util/event_clock.h
-            src/util/publisher.h
-            src/util/diagnostics_publisher.cpp
-            src/util/diagnostics_publisher.h
-            src/util/joint_state_publisher.cpp
-            src/util/joint_state_publisher.h
+            include/tue/control/rtt/event_clock.h
+            src/diagnostics_publisher.cpp
+            include/tue/control/rtt/diagnostics_publisher.h
+            src/joint_state_publisher.cpp
+            include/tue/control/rtt/joint_state_publisher.h
 )
 target_link_libraries(tue_control_rtt_util ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES})
 

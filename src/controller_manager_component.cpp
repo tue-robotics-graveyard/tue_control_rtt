@@ -7,8 +7,13 @@
 
 #include <tue/config/configuration.h>
 
-#include "util/diagnostics_publisher.h"
-#include "util/joint_state_publisher.h"
+#include <tue/control/controller_factory.h>
+#include <tue/control/supervised_controller.h>
+#include <tue/control/generic_controller.h>
+#include <tue/control/setpoint_controller.h>
+
+#include "tue/control/rtt/diagnostics_publisher.h"
+#include "tue/control/rtt/joint_state_publisher.h"
 
 #include <ros/package.h>
 
@@ -64,8 +69,8 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
     diagnostics_publisher_(new DiagnosticsPublisher),
     joint_state_publisher_(new JointStatePublisher)
 {
-    addTopicPort("diagnostics", diagnostics_publisher_->getPort());
-    addTopicPort("joint_states", joint_state_publisher_->getPort());
+    addTopicPort("diagnostics", diagnostics_publisher_->port());
+    addTopicPort("joint_states", joint_state_publisher_->port());
     addTopicPort("action", controller_manager_action_input_port_);
 
     addProperty("configuration_rospkg", configuration_rospkg_);
@@ -79,6 +84,9 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
 
     // Output ports
     addPort("reset_pos", out_port_set_refgen_positions_);
+
+    diagnostics_publisher_clock_.setFrequency(10);
+    joint_state_publisher_clock_.setFrequency(10);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -153,29 +161,23 @@ bool ControllerManagerComponent::configureHook()
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Configure manager
+    // Create controllers and configure their in and out ports
 
-    config.setValue("dt", dt_);
-    manager_.configure(config);
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Configure in and out ports
-
-    controller_infos_.resize(manager_.getNumControllers());
+    ControllerFactory factory;
+    factory.registerControllerType<tue::control::GenericController>("generic");
+    factory.registerControllerType<tue::control::SetpointController>("setpoint");
 
     if (config.readArray("controllers"))
     {
         while(config.nextArrayItem())
         {
-            std::string controller_name;
-            if (!config.value("name", controller_name))
+            std::shared_ptr<tue::control::SupervisedController> c = factory.createController(config, dt_);
+            if (!c)
                 continue;
 
-            int controller_idx = manager_.getControllerIdx(controller_name);
-            if (controller_idx < 0)
-                continue;
-
-            ControllerInfo& io = controller_infos_[controller_idx];
+            controller_infos_.push_back(ControllerInfo());
+            ControllerInfo& io = controller_infos_.back();
+            io.controller = c;
 
             // - - - - - - - - - - - - - - - - - - - - - -
             // Configure in port
@@ -198,7 +200,7 @@ bool ControllerManagerComponent::configureHook()
             }
 
         }
-        config.endArray();
+        config.endArray(); // end controllers array
     }
 
     if (config.hasError())
@@ -207,12 +209,12 @@ bool ControllerManagerComponent::configureHook()
         return false;
     }
 
-    diagnostics_publisher_->configure(manager_, 10);
-    joint_state_publisher_->configure(manager_, 10);
+//    diagnostics_publisher_->configure(manager_, 10);
+//    joint_state_publisher_->configure(manager_, 10);
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    unsigned int num_joints = manager_.getNumControllers();
+    unsigned int num_joints = controller_infos_.size();
 
     new_refgen_positions_.resize(num_joints, INVALID_DOUBLE);
     ref_positions_.resize(num_joints, INVALID_DOUBLE);
@@ -250,41 +252,42 @@ void ControllerManagerComponent::updateHook()
     in_port_ref_accelerations_.read(ref_accelerations_);
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Set references and measurements to the controllers
+
+    bool new_refgen_position = false;
 
     for(unsigned int controller_idx = 0; controller_idx < controller_infos_.size(); ++controller_idx)
     {
         ControllerInfo& info = controller_infos_[controller_idx];
 
-        // Set measurement
+        // Get measurement
         double measurement = info.input->data[info.input_index];
-        manager_.setMeasurement(controller_idx, measurement);
 
         // Set reference
-        if (info.status == READY && is_set(ref_positions_[controller_idx]))
-        {
-            manager_.setReference(controller_idx, ref_positions_[controller_idx], ref_velocities_[controller_idx], ref_accelerations_[controller_idx]);
-        }
+        if (info.controller->status() == ACTIVE && is_set(ref_positions_[controller_idx]))
+            info.controller->setReference(ref_positions_[controller_idx], ref_velocities_[controller_idx], ref_accelerations_[controller_idx]);
         else
+            info.controller->setReference(measurement, 0, 0);
+
+        ControllerStatus old_status = info.controller->status();
+        if (!is_set(info.controller->measurement()))
+            old_status = UNINITIALIZED;
+
+        // Update controller
+        info.controller->update(measurement);
+
+        // Check if the controller just switched to active
+        if (info.controller->status() == ACTIVE && old_status != ACTIVE )
         {
-            manager_.setReference(controller_idx, measurement, 0, 0);
+            // Controller just switched to ready. Notify reference generator of current position measurement
+
+            new_refgen_positions_[controller_idx] = measurement;
+            new_refgen_position = true;
+
+            std::cout << "Controller " << controller_idx << " just got ready (current position = " << measurement << ")" << std::endl;
         }
-    }
 
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Update the controllers
-
-    manager_.update();
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Get outputs from controllers
-
-    for(unsigned int controller_idx = 0; controller_idx < controller_infos_.size(); ++controller_idx)
-    {
-        ControllerInfo& info = controller_infos_[controller_idx];
-        double output = manager_.getOutput(controller_idx);
-        info.output->data[info.output_index] = output;
-
+        // Get controller output
+        info.output->data[info.output_index] = info.controller->output();
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -297,36 +300,8 @@ void ControllerManagerComponent::updateHook()
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Check if controllers change from non-ready to ready. If so, notify the reference
-    // generator of the current position of this controller
-
-    bool new_refgen_position = false;
-    for(unsigned int controller_idx = 0; controller_idx < controller_infos_.size(); ++controller_idx)
-    {
-        ControllerInfo& info = controller_infos_[controller_idx];
-
-        ControllerStatus old_status = info.status;
-        ControllerStatus new_status = manager_.getStatus(controller_idx);
-
-        if (old_status != tue::control::READY && new_status == READY)
-        {
-            double measurement = manager_.getMeasurement(controller_idx);
-            if (is_set(measurement))
-            {
-                std::cout << "Controller " << controller_idx << " just got ready (current position = " << measurement << ")" << std::endl;
-
-                // Controller just switched to ready. Notify reference generator of current position measurement
-                new_refgen_positions_[controller_idx] = measurement;
-                new_refgen_position = true;
-
-                info.status = new_status;
-            }
-        }
-        else
-        {
-            info.status = new_status;
-        }
-    }
+    // If one of the controllers just switched to active, send the current position to the
+    // reference generator
 
     if (new_refgen_position)
     {
@@ -336,8 +311,11 @@ void ControllerManagerComponent::updateHook()
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    joint_state_publisher_->publish();
-    diagnostics_publisher_->publish();
+    if (joint_state_publisher_clock_.triggers())
+        joint_state_publisher_->publish(controller_infos_);
+
+    if (diagnostics_publisher_clock_.triggers())
+        diagnostics_publisher_->publish(controller_infos_);
 }
 
 // ----------------------------------------------------------------------------------------------------

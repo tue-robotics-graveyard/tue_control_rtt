@@ -20,8 +20,13 @@ public:
 
     EventClock(double freq) : cycle_duration_(1.0 / freq), t_last_trigger_(0) {}
 
+    void setFrequency(double freq) { cycle_duration_ = 1.0 / freq; }
+
     bool triggers()
     {
+        if (cycle_duration_ == 0)
+            return false;
+
         struct timeval now;
         gettimeofday(&now, NULL);
 
@@ -35,6 +40,7 @@ public:
     }
 
 private:
+
     double cycle_duration_;
     double t_last_trigger_;
 };
