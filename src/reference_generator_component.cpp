@@ -164,7 +164,7 @@ void ReferenceGeneratorComponent::updateHook()
             if (!is_set(pos))
                 continue;
 
-            std::cout << "Setting reference generator state of joint " << i << " to " << pos << std::endl;
+            RTT::log(RTT::Info) << "Setting reference generator state of joint " << i << " to " << pos << RTT::endlog();
 
             reference_generator_.setJointState(i, pos, 0);
         }
@@ -176,6 +176,12 @@ void ReferenceGeneratorComponent::updateHook()
 
     for(unsigned int i = 0; i < ref_positions_.size(); ++i)
     {
+        if (!reference_generator_.joint_state(i).is_set)
+        {
+            ref_positions_[i] = INVALID_DOUBLE;
+            continue;
+        }
+
         ref_velocities_[i] = reference_generator_.joint_state(i).velocity();
         ref_accelerations_[i] = reference_generator_.joint_state(i).acceleration();
     }
