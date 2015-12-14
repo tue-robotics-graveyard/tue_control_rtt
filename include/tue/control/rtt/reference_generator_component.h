@@ -6,6 +6,10 @@
 
 #include <tue/manipulation/reference_generator.h>
 
+#include <rtt_actionlib/rtt_actionlib.h>
+#include <rtt_actionlib/rtt_action_server.h>
+#include <control_msgs/FollowJointTrajectoryAction.h>
+
 namespace tue
 {
 
@@ -53,8 +57,22 @@ private:
     RTT::OutputPort<std::vector<double> > out_port_ref_accelerations_;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Reference generator
 
     tue::manipulation::ReferenceGenerator reference_generator_;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // ROS interface
+
+    ACTION_DEFINITION(control_msgs::FollowJointTrajectoryAction)
+    rtt_actionlib::RTTActionServer<control_msgs::FollowJointTrajectoryAction> rtt_action_server_;
+    typedef actionlib::ServerGoalHandle<control_msgs::FollowJointTrajectoryAction> GoalHandle;
+
+    std::map<std::string, GoalHandle> goal_handles_;
+
+    void goalCallback(GoalHandle gh);
+
+    void cancelCallback(GoalHandle gh);
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

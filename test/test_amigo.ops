@@ -13,6 +13,9 @@ refgen.sampling_time = TS
 refgen.configure
 
 setActivity("refgen", TS, HighestPriority, ORO_SCHED_RT)
+loadService("refgen","actionlib")
+
+refgen.actionlib.connect("/amigo/body/joint_trajectory_action");
 
 # ---------------------------------------------------------------------------
 # Controllers
@@ -37,8 +40,8 @@ connect("refgen.ref_acc", "controllers.ref_acc", ConnPolicy())
 # Torso spindle
 
 loadComponent("torso", "tue::control::rtt::SimPlant")
-torso.masses    = array(-1.0)
-torso.dampings  = array(-1000.0)
+torso.masses    = array(-0.5)
+torso.dampings  = array(-50.0)
 torso.positions = array(0.1)
 torso.sampling_time = TS
 torso.configure

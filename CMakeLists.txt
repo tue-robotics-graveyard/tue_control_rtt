@@ -11,10 +11,14 @@ find_package(catkin REQUIRED COMPONENTS
     tue_config
     roslib  # Used for find package
 
-    tue_manipulation  # For reference generator
+    # For reference generator
+    tue_manipulation
+    rtt_actionlib
+    control_msgs
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wreturn-type -Wsign-compare -Wreorder")
 
 include_directories(
     include
@@ -22,7 +26,7 @@ include_directories(
     ${USE_OROCOS_INCLUDE_DIRS}
 )
 
-### Orocos Targets ###
+# --------------------------------------------------------------------------------
 
 add_library(tue_control_rtt_util
             include/tue/control/rtt/event_clock.h

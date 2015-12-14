@@ -36,6 +36,13 @@ ReferenceGeneratorComponent::ReferenceGeneratorComponent(const std::string& name
     addPort("ref_pos", out_port_ref_positions_);
     addPort("ref_vel", out_port_ref_velocities_);
     addPort("ref_acc", out_port_ref_accelerations_);
+
+    // Add action server ports to this task's root service
+    rtt_action_server_.addPorts(this->provides());
+
+    // Bind action server goal and cancel callbacks
+    rtt_action_server_.registerGoalCallback(boost::bind(&ReferenceGeneratorComponent::goalCallback, this, _1));
+    rtt_action_server_.registerCancelCallback(boost::bind(&ReferenceGeneratorComponent::cancelCallback, this, _1));
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -140,19 +147,26 @@ bool ReferenceGeneratorComponent::configureHook()
     ref_positions_.resize(num_joints, tue::control::INVALID_DOUBLE);
     ref_velocities_.resize(num_joints, tue::control::INVALID_DOUBLE);
     ref_accelerations_.resize(num_joints, tue::control::INVALID_DOUBLE);
+
+    return true;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 bool ReferenceGeneratorComponent::startHook()
 {
+    // Start the actionlib server
+    rtt_action_server_.start();
 
+    return true;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 void ReferenceGeneratorComponent::updateHook()
 {
+//    RTT::log(RTT::Error) << "ReferenceGeneratorComponent::updateHook()" << RTT::endlog();
+
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Reset reference generator if asked
 
@@ -171,8 +185,42 @@ void ReferenceGeneratorComponent::updateHook()
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // If not active goals, do nothing
+
+    if (!reference_generator_.hasActiveGoals())
+        return;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Generate references
 
     reference_generator_.calculatePositionReferences(dt_, ref_positions_);
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Check for each goal if it succeeded or canceled, and notify the goal handle accordingly
+
+    for(std::map<std::string, GoalHandle>::iterator it = goal_handles_.begin(); it != goal_handles_.end();)
+    {
+        GoalHandle& gh = it->second;
+        tue::manipulation::JointGoalStatus status = reference_generator_.getGoalStatus(gh.getGoalID().id);
+
+        if (status == tue::manipulation::JOINT_GOAL_SUCCEEDED)
+        {
+            gh.setSucceeded();
+            goal_handles_.erase(it++);
+        }
+        else if (status == tue::manipulation::JOINT_GOAL_CANCELED)
+        {
+            gh.setCanceled();
+            goal_handles_.erase(it++);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Fill output data
 
     for(unsigned int i = 0; i < ref_positions_.size(); ++i)
     {
@@ -199,6 +247,39 @@ void ReferenceGeneratorComponent::updateHook()
 void ReferenceGeneratorComponent::stopHook()
 {
 
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ReferenceGeneratorComponent::goalCallback(GoalHandle gh)
+{
+    RTT::log(RTT::Info) << "ReferenceGeneratorComponent: Received goal" << RTT::endlog();
+
+    std::stringstream error;
+    std::string goalid = gh.getGoalID().id;
+    if (!reference_generator_.setGoal(*gh.getGoal(), goalid, error))
+    {
+        control_msgs::FollowJointTrajectoryResult result;
+        result.error_string = error.str();
+        result.error_code = 1;
+
+        gh.setRejected(result);
+        ROS_ERROR("%s", result.error_string.c_str());
+        return;
+    }
+
+    // Accept the goal
+    gh.setAccepted();
+    goal_handles_[goalid] = gh;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+void ReferenceGeneratorComponent::cancelCallback(GoalHandle gh)
+{
+    gh.setCanceled();
+    reference_generator_.cancelGoal(gh.getGoalID().id);
+    goal_handles_.erase(gh.getGoalID().id);
 }
 
 // ----------------------------------------------------------------------------------------------------
