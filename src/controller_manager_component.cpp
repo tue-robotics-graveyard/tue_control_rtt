@@ -14,6 +14,7 @@
 
 #include "tue/control/rtt/diagnostics_publisher.h"
 #include "tue/control/rtt/joint_state_publisher.h"
+#include "tue/control/rtt/controller_state_publisher.h"
 
 #include <ros/package.h>
 
@@ -67,10 +68,12 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
     RTT::TaskContext(name),
     dt_(0),
     diagnostics_publisher_(new DiagnosticsPublisher),
-    joint_state_publisher_(new JointStatePublisher)
+    joint_state_publisher_(new JointStatePublisher),
+    controller_state_publisher_(new ControllerStatePublisher)
 {
     addTopicPort("diagnostics", diagnostics_publisher_->port());
     addTopicPort("joint_states", joint_state_publisher_->port());
+    addTopicPort("controller_states", controller_state_publisher_->port());
     addTopicPort("action", controller_manager_action_input_port_);
 
     addProperty("configuration_rospkg", configuration_rospkg_);
@@ -87,6 +90,7 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
 
     diagnostics_publisher_clock_.setFrequency(10);
     joint_state_publisher_clock_.setFrequency(10);
+    controller_state_publisher_clock_.setFrequency(10);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -104,6 +108,7 @@ ControllerManagerComponent::~ControllerManagerComponent()
 {
     delete diagnostics_publisher_;
     delete joint_state_publisher_;
+    delete controller_state_publisher_;
 
     for(std::map<std::string, ControllerInput*>::iterator it = inputs_.begin(); it != inputs_.end(); ++it)
         delete it->second;
@@ -310,6 +315,9 @@ void ControllerManagerComponent::updateHook()
 
     if (diagnostics_publisher_clock_.triggers())
         diagnostics_publisher_->publish(controller_infos_);
+
+    if (controller_state_publisher_clock_.triggers())
+        controller_state_publisher_->publish(controller_infos_);
 }
 
 // ----------------------------------------------------------------------------------------------------

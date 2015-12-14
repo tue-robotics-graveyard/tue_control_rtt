@@ -29,11 +29,13 @@ include_directories(
 # --------------------------------------------------------------------------------
 
 add_library(tue_control_rtt_util
-            include/tue/control/rtt/event_clock.h
-            src/diagnostics_publisher.cpp
-            include/tue/control/rtt/diagnostics_publisher.h
-            src/joint_state_publisher.cpp
-            include/tue/control/rtt/joint_state_publisher.h
+    include/tue/control/rtt/event_clock.h
+    src/diagnostics_publisher.cpp
+    include/tue/control/rtt/diagnostics_publisher.h
+    src/joint_state_publisher.cpp
+    include/tue/control/rtt/joint_state_publisher.h
+    src/controller_state_publisher.cpp
+    include/tue/control/rtt/controller_state_publisher.h
 )
 target_link_libraries(tue_control_rtt_util ${catkin_LIBRARIES} ${USE_OROCOS_LIBRARIES})
 

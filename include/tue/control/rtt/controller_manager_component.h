@@ -23,6 +23,7 @@ namespace rtt
 
 class DiagnosticsPublisher;
 class JointStatePublisher;
+class ControllerStatePublisher;
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -142,6 +143,10 @@ protected:
     //! Joint state publisher
     EventClock joint_state_publisher_clock_;
     JointStatePublisher* joint_state_publisher_;
+
+    //! Controller state publisher
+    EventClock controller_state_publisher_clock_;
+    ControllerStatePublisher* controller_state_publisher_;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Communication with reference generator
