@@ -69,6 +69,11 @@ void controllerDiagnosticsToMessage(const tue::control::SupervisedController& c,
         status.values[3].value = "INACTIVE";
         break;
     }
+
+    if (c.status() == tue::control::ERROR)
+        status.message = c.error_message();
+    else
+        status.message.clear();
 }
 
 }

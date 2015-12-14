@@ -209,9 +209,6 @@ bool ControllerManagerComponent::configureHook()
         return false;
     }
 
-//    diagnostics_publisher_->configure(manager_, 10);
-//    joint_state_publisher_->configure(manager_, 10);
-
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     unsigned int num_joints = controller_infos_.size();
@@ -265,12 +262,9 @@ void ControllerManagerComponent::updateHook()
         // Set reference
         if (info.controller->status() == ACTIVE && is_set(ref_positions_[controller_idx]))
             info.controller->setReference(ref_positions_[controller_idx], ref_velocities_[controller_idx], ref_accelerations_[controller_idx]);
-        else
-            info.controller->setReference(measurement, 0, 0);
 
+        // Remember status before update
         ControllerStatus old_status = info.controller->status();
-        if (!is_set(info.controller->measurement()))
-            old_status = UNINITIALIZED;
 
         // Update controller
         info.controller->update(measurement);
@@ -278,12 +272,12 @@ void ControllerManagerComponent::updateHook()
         // Check if the controller just switched to active
         if (info.controller->status() == ACTIVE && old_status != ACTIVE )
         {
-            // Controller just switched to ready. Notify reference generator of current position measurement
-
+            // Controller just switched to active. Notify reference generator of current position measurement
             new_refgen_positions_[controller_idx] = measurement;
             new_refgen_position = true;
 
-            std::cout << "Controller " << controller_idx << " just got ready (current position = " << measurement << ")" << std::endl;
+           RTT::log(RTT::Info) << "Controller '" << info.controller->name() << "' (idx = " << controller_idx << ") "
+                               << "just got active (current position = " << measurement << ")" << RTT::endlog();
         }
 
         // Get controller output
