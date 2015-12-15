@@ -134,6 +134,7 @@ protected:
     void addTopicPort(const std::string& name, RTT::base::PortInterface& port);
 
     //! Dashboard actions input port
+    tue_control_rtt_msgs::ControllerManagerAction controller_manager_action_;
     RTT::InputPort<tue_control_rtt_msgs::ControllerManagerAction> controller_manager_action_input_port_;
 
     //! Diagnostics publisher
@@ -165,6 +166,7 @@ protected:
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     std::vector<ControllerInfo> controller_infos_;
+    std::map<std::string, ControllerInfo*> controller_info_map_;
     std::map<std::string, ControllerInput*> inputs_;
     std::map<std::string, ControllerOutput*> outputs_;
 

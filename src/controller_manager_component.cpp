@@ -204,6 +204,9 @@ bool ControllerManagerComponent::configureHook()
                 config.endGroup(); // end group 'output'
             }
 
+            // - - - - - - - - - - - - - - - - - - - - - -
+            // Add to controller_info map
+            controller_info_map_[io.controller->name()] = &io;
         }
         config.endArray(); // end controllers array
     }
@@ -237,6 +240,37 @@ bool ControllerManagerComponent::startHook()
 
 void ControllerManagerComponent::updateHook()
 {
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Read actions
+    if (controller_manager_action_input_port_.read(controller_manager_action_) == RTT::NewData)
+    {
+        for (std::vector<tue_control_rtt_msgs::ControllerAction>::const_iterator it = controller_manager_action_.actions.begin(); it != controller_manager_action_.actions.end(); ++it)
+        {
+            const tue_control_rtt_msgs::ControllerAction& action = *it;
+            std::map<std::string, ControllerInfo*>::iterator controller_info_it = controller_info_map_.find(action.name);
+            if (controller_info_it != controller_info_map_.end())
+            {
+                std::shared_ptr<SupervisedController>& supervised_controller = controller_info_it->second->controller;
+                if (action.action == "set_active")
+                {
+                    supervised_controller->setActive();
+                }
+                else if (action.action == "set_inactive")
+                {
+                    supervised_controller->setInactive();
+                }
+                else
+                {
+                    RTT::log(RTT::Error) << "Received unknown action '" << action.action << "' for controller '" << action.name << "'!" << RTT::endlog();
+                }
+            }
+            else
+            {
+                RTT::log(RTT::Error) << "Received action for unknown controller '" << action.name << "'!" << RTT::endlog();
+            }
+        }
+    }
+
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Read measurements
 

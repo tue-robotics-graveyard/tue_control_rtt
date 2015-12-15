@@ -23,7 +23,7 @@ rospy.loginfo("Sending the the following actions to the controller manager (topi
 msg = ControllerManagerAction()
 for name, action in actions.iteritems():
     rospy.loginfo("%s --> %s" % (name, action))
-    msg.actions.append(ControllerAction(name=name, action=action))
+    msg.actions.append(ControllerAction(name=name, action=action, parameters=[]))
 
 rospy.sleep(0.5)
 pub.publish(msg)
