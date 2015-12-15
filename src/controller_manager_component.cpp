@@ -74,7 +74,7 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
     addTopicPort("diagnostics", diagnostics_publisher_->port());
     addTopicPort("joint_states", joint_state_publisher_->port());
     addTopicPort("controller_states", controller_state_publisher_->port());
-    addTopicPort("action", controller_manager_action_input_port_);
+    addTopicPort("action", in_port_controller_manager_action_);
 
     addProperty("configuration_rospkg", configuration_rospkg_);
     addProperty("configuration_path", configuration_path_);
@@ -84,6 +84,7 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
     addPort("ref_pos", in_port_ref_positions_);
     addPort("ref_vel", in_port_ref_velocities_);
     addPort("ref_acc", in_port_ref_accelerations_);
+    addPort("emergency_switch", in_port_emergency_switch_);
 
     // Output ports
     addPort("reset_pos", out_port_set_refgen_positions_);
@@ -241,8 +242,26 @@ bool ControllerManagerComponent::startHook()
 void ControllerManagerComponent::updateHook()
 {
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Read emergency switch
+    if (in_port_emergency_switch_.read(emergency_switch_) == RTT::NewData)
+    {
+        RTT::log(RTT::Info) << "Emergency switch input switched to '" << emergency_switch_ << "'" << RTT::endlog();
+        for(unsigned int controller_idx = 0; controller_idx < controller_infos_.size(); ++controller_idx)
+        {
+            if (emergency_switch_)
+            {
+                controller_infos_[controller_idx].controller->setInactive();
+            }
+            else
+            {
+                controller_infos_[controller_idx].controller->setActive();
+            }
+        }
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Read actions
-    if (controller_manager_action_input_port_.read(controller_manager_action_) == RTT::NewData)
+    if (in_port_controller_manager_action_.read(controller_manager_action_) == RTT::NewData)
     {
         for (std::vector<tue_control_rtt_msgs::ControllerAction>::const_iterator it = controller_manager_action_.actions.begin(); it != controller_manager_action_.actions.end(); ++it)
         {

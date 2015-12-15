@@ -135,7 +135,7 @@ protected:
 
     //! Dashboard actions input port
     tue_control_rtt_msgs::ControllerManagerAction controller_manager_action_;
-    RTT::InputPort<tue_control_rtt_msgs::ControllerManagerAction> controller_manager_action_input_port_;
+    RTT::InputPort<tue_control_rtt_msgs::ControllerManagerAction> in_port_controller_manager_action_;
 
     //! Diagnostics publisher
     EventClock diagnostics_publisher_clock_;
@@ -169,6 +169,11 @@ protected:
     std::map<std::string, unsigned int> controller_info_map_;
     std::map<std::string, ControllerInput*> inputs_;
     std::map<std::string, ControllerOutput*> outputs_;
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Communication with the emergency switch
+    bool emergency_switch_;
+    RTT::InputPort<bool> in_port_emergency_switch_;
 
 };
 
