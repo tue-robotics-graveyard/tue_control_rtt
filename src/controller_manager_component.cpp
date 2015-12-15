@@ -206,7 +206,7 @@ bool ControllerManagerComponent::configureHook()
 
             // - - - - - - - - - - - - - - - - - - - - - -
             // Add to controller_info map
-            controller_info_map_[io.controller->name()] = &io;
+            controller_info_map_[io.controller->name()] = controller_infos_.size() - 1;
         }
         config.endArray(); // end controllers array
     }
@@ -247,10 +247,10 @@ void ControllerManagerComponent::updateHook()
         for (std::vector<tue_control_rtt_msgs::ControllerAction>::const_iterator it = controller_manager_action_.actions.begin(); it != controller_manager_action_.actions.end(); ++it)
         {
             const tue_control_rtt_msgs::ControllerAction& action = *it;
-            std::map<std::string, ControllerInfo*>::iterator controller_info_it = controller_info_map_.find(action.name);
+            std::map<std::string, unsigned int>::iterator controller_info_it = controller_info_map_.find(action.name);
             if (controller_info_it != controller_info_map_.end())
             {
-                std::shared_ptr<SupervisedController>& supervised_controller = controller_info_it->second->controller;
+                std::shared_ptr<SupervisedController> supervised_controller = controller_infos_[controller_info_it->second].controller;
                 if (action.action == "set_active")
                 {
                     supervised_controller->setActive();

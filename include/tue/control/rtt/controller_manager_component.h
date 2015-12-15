@@ -166,7 +166,7 @@ protected:
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     std::vector<ControllerInfo> controller_infos_;
-    std::map<std::string, ControllerInfo*> controller_info_map_;
+    std::map<std::string, unsigned int> controller_info_map_;
     std::map<std::string, ControllerInput*> inputs_;
     std::map<std::string, ControllerOutput*> outputs_;
 
