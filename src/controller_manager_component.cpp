@@ -90,7 +90,7 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
 
     diagnostics_publisher_clock_.setFrequency(10);
     joint_state_publisher_clock_.setFrequency(10);
-    controller_state_publisher_clock_.setFrequency(10);
+    controller_state_publisher_clock_.setFrequency(30);
 }
 
 // ----------------------------------------------------------------------------------------------------

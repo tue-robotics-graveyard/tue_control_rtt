@@ -28,6 +28,8 @@ void ControllerStatePublisher::publish(const std::vector<ControllerInfo>& infos)
 //    message_.header.seq++;
 //    message_.header.stamp = ros::Time::now();
 
+    message_.timestamp = ros::Time::now();
+
     for(unsigned int i = 0; i < num_controllers; ++i)
     {
         std::shared_ptr<tue::control::SupervisedController> c = infos[i].controller;
