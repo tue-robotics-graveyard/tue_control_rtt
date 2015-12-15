@@ -40,6 +40,7 @@ void ControllerStatePublisher::publish(const std::vector<ControllerInfo>& infos)
         s.ref_velocity = c->reference_velocity();
         s.ref_acceleration = c->reference_acceleration();
         s.status = c->status();
+        s.is_homed = c->is_homed();
     }
 
     port_.write(message_);
