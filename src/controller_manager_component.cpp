@@ -55,7 +55,7 @@ T* addOrUpdateConnection(ControllerManagerComponent* compoment, std::map<std::st
     }
 
     if (index + 1 > connection->data.size())
-        connection->data.resize(index + 1, INVALID_DOUBLE);
+        connection->data.resize(index + 1, 0);
 
     return connection;
 }
@@ -164,6 +164,27 @@ bool ControllerManagerComponent::configureHook()
     {
         RTT::log(RTT::Error) << "ControllerManagerComponent::configureHook(): " << config.error() << RTT::endlog();
         return false;
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // Optional: pre-resize output ports
+
+    if (config.readArray("output_ports"))
+    {
+        while(config.nextArrayItem())
+        {
+            std::string name;
+            double size;
+            if (!config.value("name", name) | !config.value("size", size))
+                continue;
+
+            ControllerOutput* connection = new ControllerOutput;
+            addPort(name, connection->port);
+            outputs_[name] = connection;
+
+            connection->data.resize(size, 0);
+        }
+        config.endArray();
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
