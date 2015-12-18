@@ -8,6 +8,7 @@
 #include <ros/package.h>
 
 #include <tue/control/generic.h>
+#include <tue/control/supervised_controller.h>
 
 #include <urdf/model.h>
 
@@ -31,6 +32,7 @@ ReferenceGeneratorComponent::ReferenceGeneratorComponent(const std::string& name
 
     // Input port
     addPort("reset_pos", in_port_reset_positions_);
+    addPort("controller_status", in_port_controller_status_);
 
     // Output ports
     addPort("ref_pos", out_port_ref_positions_);
@@ -144,6 +146,7 @@ bool ReferenceGeneratorComponent::configureHook()
 
     unsigned int num_joints = reference_generator_.joint_names().size();
     reset_positions_.resize(num_joints, tue::control::INVALID_DOUBLE);
+    controller_status_.resize(num_joints, -1);
     ref_positions_.resize(num_joints, tue::control::INVALID_DOUBLE);
     ref_velocities_.resize(num_joints, tue::control::INVALID_DOUBLE);
     ref_accelerations_.resize(num_joints, tue::control::INVALID_DOUBLE);
@@ -181,6 +184,27 @@ void ReferenceGeneratorComponent::updateHook()
             RTT::log(RTT::Info) << "Setting reference generator state of joint " << i << " to " << pos << RTT::endlog();
 
             reference_generator_.setJointState(i, pos, 0);
+        }
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    //
+
+    if (in_port_controller_status_.read(controller_status_) == RTT::NewData)
+    {
+        for(unsigned int i = 0; i < controller_status_.size(); ++i)
+        {
+            int status = controller_status_[i];
+            if (status < 0)
+                continue;
+
+            if (status != tue::control::ACTIVE)
+            {
+                ref_positions_[i] = INVALID_DOUBLE;
+
+                // Make sure the goal is canceled
+                reference_generator_.cancelGoal(reference_generator_.joint_state(i).goal_id);
+            }
         }
     }
 
@@ -255,12 +279,32 @@ void ReferenceGeneratorComponent::goalCallback(GoalHandle gh)
 {
     RTT::log(RTT::Info) << "ReferenceGeneratorComponent: Received goal" << RTT::endlog();
 
-    std::stringstream error;
+
+    std::string error;
+    for(unsigned int i = 0; i < gh.getGoal()->trajectory.joint_names.size(); ++i)
+    {
+        const std::string& joint_name = gh.getGoal()->trajectory.joint_names[i];
+        int joint_idx = reference_generator_.joint_index(joint_name);
+        if (joint_idx < 0)
+            continue;
+
+        if (controller_status_[joint_idx] != tue::control::ACTIVE)
+            error += "Controller '" + joint_name + "' is not active\n";
+    }
+
     std::string goalid = gh.getGoalID().id;
-    if (!reference_generator_.setGoal(*gh.getGoal(), goalid, error))
+
+    if (error.empty())
+    {
+        std::stringstream s_error;
+        if (!reference_generator_.setGoal(*gh.getGoal(), goalid, s_error))
+            error = s_error.str();
+    }
+
+    if (!error.empty())
     {
         control_msgs::FollowJointTrajectoryResult result;
-        result.error_string = error.str();
+        result.error_string = error;
         result.error_code = 1;
 
         gh.setRejected(result);

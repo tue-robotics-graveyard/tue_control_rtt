@@ -64,7 +64,7 @@ void controllerDiagnosticsToMessage(const tue::control::SupervisedController& c,
         status.level = status.OK;
         status.values[3].value = "ACTIVE";
         break;
-    case INACTIVE:
+    case IDLE:
         status.level = status.OK;
         status.values[3].value = "INACTIVE";
         break;

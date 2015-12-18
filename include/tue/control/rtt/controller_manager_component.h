@@ -10,6 +10,8 @@
 
 #include "tue/control/rtt/event_clock.h"
 
+#include <tue/control/generic.h>
+
 namespace tue
 {
 
@@ -45,7 +47,7 @@ struct ControllerOutput
 
 struct ControllerInfo
 {
-    ControllerInfo() : input(nullptr), output(nullptr) {}
+    ControllerInfo() : input(nullptr), output(nullptr), homing_pos(INVALID_DOUBLE) {}
 
     // IO
 
@@ -56,6 +58,8 @@ struct ControllerInfo
     int output_index;
 
     std::shared_ptr<SupervisedController> controller;
+
+    double homing_pos;
 };
 
 // ----------------------------------------------------------------------------------------------------
@@ -154,6 +158,9 @@ protected:
 
     std::vector<double> new_refgen_positions_;
     RTT::OutputPort<std::vector<double> > out_port_set_refgen_positions_;
+
+    std::vector<double> controller_status_;
+    RTT::OutputPort<std::vector<double> > out_port_controller_status_;
 
     std::vector<double> ref_positions_;
     std::vector<double> ref_velocities_;

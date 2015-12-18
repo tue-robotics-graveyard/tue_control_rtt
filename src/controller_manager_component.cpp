@@ -88,6 +88,7 @@ ControllerManagerComponent::ControllerManagerComponent(const std::string& name) 
 
     // Output ports
     addPort("reset_pos", out_port_set_refgen_positions_);
+    addPort("controller_status", out_port_controller_status_);
 
     diagnostics_publisher_clock_.setFrequency(10);
     joint_state_publisher_clock_.setFrequency(10);
@@ -188,7 +189,7 @@ bool ControllerManagerComponent::configureHook()
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // Create controllers and configure their in and out ports
+    // Create controllers and configure their in / out ports and homing
 
     ControllerFactory factory;
     factory.registerControllerType<tue::control::GenericController>("generic");
@@ -203,16 +204,16 @@ bool ControllerManagerComponent::configureHook()
                 continue;
 
             controller_infos_.push_back(ControllerInfo());
-            ControllerInfo& io = controller_infos_.back();
-            io.controller = c;
+            ControllerInfo& info = controller_infos_.back();
+            info.controller = c;
 
             // - - - - - - - - - - - - - - - - - - - - - -
             // Configure in port
 
             if (config.readGroup("input", tue::REQUIRED))
             {
-                io.input = addOrUpdateConnection(this, inputs_, config);
-                config.value("index", io.input_index);
+                info.input = addOrUpdateConnection(this, inputs_, config);
+                config.value("index", info.input_index);
                 config.endGroup(); // end group 'input'
             }
 
@@ -221,14 +222,24 @@ bool ControllerManagerComponent::configureHook()
 
             if (config.readGroup("output", tue::REQUIRED))
             {
-                io.output = addOrUpdateConnection(this, outputs_, config);
-                config.value("index", io.output_index);
+                info.output = addOrUpdateConnection(this, outputs_, config);
+                config.value("index", info.output_index);
                 config.endGroup(); // end group 'output'
             }
 
             // - - - - - - - - - - - - - - - - - - - - - -
+            // Read homing parameters
+
+            if (config.readGroup("homing"))
+            {
+                config.value("homing_position", info.homing_pos);
+                config.endGroup();
+            }
+
+            // - - - - - - - - - - - - - - - - - - - - - -
             // Add to controller_info map
-            controller_info_map_[io.controller->name()] = controller_infos_.size() - 1;
+
+            controller_info_map_[info.controller->name()] = controller_infos_.size() - 1;
         }
         config.endArray(); // end controllers array
     }
@@ -244,6 +255,7 @@ bool ControllerManagerComponent::configureHook()
     unsigned int num_joints = controller_infos_.size();
 
     new_refgen_positions_.resize(num_joints, INVALID_DOUBLE);
+    controller_status_.resize(num_joints, INVALID_DOUBLE);
     ref_positions_.resize(num_joints, INVALID_DOUBLE);
     ref_velocities_.resize(num_joints, INVALID_DOUBLE);
     ref_accelerations_.resize(num_joints, INVALID_DOUBLE);
@@ -264,6 +276,7 @@ void ControllerManagerComponent::updateHook()
 {
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Read emergency switch
+
     if (in_port_emergency_switch_.read(emergency_switch_) == RTT::NewData)
     {
         RTT::log(RTT::Info) << "Emergency switch input switched to '" << emergency_switch_ << "'" << RTT::endlog();
@@ -271,17 +284,18 @@ void ControllerManagerComponent::updateHook()
         {
             if (emergency_switch_)
             {
-                controller_infos_[controller_idx].controller->setInactive();
+                controller_infos_[controller_idx].controller->disable();
             }
             else
             {
-                controller_infos_[controller_idx].controller->setActive();
+                controller_infos_[controller_idx].controller->enable();
             }
         }
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Read actions
+
     if (in_port_controller_manager_action_.read(controller_manager_action_) == RTT::NewData)
     {
         for (std::vector<tue_control_rtt_msgs::ControllerAction>::const_iterator it = controller_manager_action_.actions.begin(); it != controller_manager_action_.actions.end(); ++it)
@@ -290,14 +304,30 @@ void ControllerManagerComponent::updateHook()
             std::map<std::string, unsigned int>::iterator controller_info_it = controller_info_map_.find(action.name);
             if (controller_info_it != controller_info_map_.end())
             {
-                std::shared_ptr<SupervisedController> supervised_controller = controller_infos_[controller_info_it->second].controller;
-                if (action.action == "set_active")
+                ControllerInfo& info = controller_infos_[controller_info_it->second];
+
+                std::shared_ptr<SupervisedController> supervised_controller = info.controller;
+                if (action.action == "enable")
                 {
-                    supervised_controller->setActive();
+                    supervised_controller->enable();
                 }
-                else if (action.action == "set_inactive")
+                else if (action.action == "disable")
                 {
-                    supervised_controller->setInactive();
+                    supervised_controller->disable();
+                }
+                else if (action.action == "start_homing")
+                {
+                    if (supervised_controller->is_homable())
+                        supervised_controller->startHoming();
+                    else
+                        RTT::log(RTT::Error) << "Controller " << action.name << " cannot be homed" << RTT::endlog();
+                }
+                else if (action.action == "stop_homing")
+                {
+                    if (is_set(info.homing_pos))
+                        supervised_controller->stopHoming(info.homing_pos);
+                    else
+                        supervised_controller->stopHoming(0); // TODO: read from parameter
                 }
                 else
                 {
@@ -336,7 +366,7 @@ void ControllerManagerComponent::updateHook()
         ControllerInfo& info = controller_infos_[controller_idx];
 
         // Get measurement
-        double measurement = info.input->data[info.input_index];
+        double raw_measurement = info.input->data[info.input_index];
 
         // Set reference
         if (info.controller->status() == ACTIVE && is_set(ref_positions_[controller_idx]))
@@ -346,17 +376,17 @@ void ControllerManagerComponent::updateHook()
         ControllerStatus old_status = info.controller->status();
 
         // Update controller
-        info.controller->update(measurement);
+        info.controller->update(raw_measurement);
 
         // Check if the controller just switched to active
         if (info.controller->status() == ACTIVE && old_status != ACTIVE )
         {
             // Controller just switched to active. Notify reference generator of current position measurement
-            new_refgen_positions_[controller_idx] = measurement;
+            new_refgen_positions_[controller_idx] = info.controller->measurement();
             new_refgen_position = true;
 
            RTT::log(RTT::Info) << "Controller '" << info.controller->name() << "' (idx = " << controller_idx << ") "
-                               << "just got active (current position = " << measurement << ")" << RTT::endlog();
+                               << "just got active (current position = " << info.controller->measurement() << ")" << RTT::endlog();
         }
 
         // Get controller output
@@ -371,6 +401,14 @@ void ControllerManagerComponent::updateHook()
         ControllerOutput* output = it->second;
         output->port.write(output->data);
     }
+
+    for(unsigned int controller_idx = 0; controller_idx < controller_status_.size(); ++controller_idx)
+    {
+        ControllerInfo& info = controller_infos_[controller_idx];
+        controller_status_[controller_idx] = info.controller->status();
+    }
+
+    out_port_controller_status_.write(controller_status_);
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // If one of the controllers just switched to active, send the current position to the

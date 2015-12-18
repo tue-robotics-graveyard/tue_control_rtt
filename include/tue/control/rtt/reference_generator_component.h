@@ -42,8 +42,10 @@ private:
     // Input
 
     std::vector<double> reset_positions_;
-
     RTT::InputPort<std::vector<double> > in_port_reset_positions_;
+
+    std::vector<double> controller_status_;
+    RTT::InputPort<std::vector<double> > in_port_controller_status_;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Ouptut
